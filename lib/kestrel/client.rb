@@ -147,7 +147,9 @@ module Kestrel
     end
 
     def shuffle_if_necessary!(key)
-      if key != @current_queue || @counter >= @gets_per_server
+      # Don't reset servers on the first request:
+      # i.e. @counter == 0 && @current_queue == nil
+      if (@counter > 0 && key != @current_queue) || @counter >= @gets_per_server
         @counter = 0
         @current_queue = key
         @read_client.quit
