@@ -37,7 +37,8 @@ module Kestrel
       Memcached::ServerError,
       Memcached::SystemError,
       Memcached::UnknownReadFailure,
-      Memcached::WriteFailure
+      Memcached::WriteFailure,
+      Memcached::NotFound
     ]
 
     extend Forwardable
@@ -45,6 +46,7 @@ module Kestrel
     include RetryHelper
 
     attr_accessor :servers, :options
+    attr_reader :current_queue, :kestrel_options, :current_server
 
     def_delegators :@write_client, :add, :append, :cas, :decr, :incr, :get_orig, :prepend
 
@@ -63,14 +65,13 @@ module Kestrel
       opts[:exception_retry_limit] = 0
       opts[:distribution] = :random # force random distribution
 
-      self.servers = Array(servers).flatten.compact
-      self.options = opts
-      @read_client = Memcached.new(self.servers, opts)
+      self.servers  = Array(servers).flatten.compact
+      self.options  = opts
+
+      @server_count = self.servers.size # Minor optimization.
+      @read_client  = Memcached.new(self.servers[rand(@server_count)], opts)
       @write_client = Memcached.new(self.servers, opts)
     end
-
-
-    attr_reader :current_queue, :kestrel_options
 
     def get_from_random(key, raw=false)
       @read_client.get key, !raw
@@ -78,14 +79,7 @@ module Kestrel
     end
 
     def get_from_last(key, raw=false)
-      # use get_from_last if available, otherwise use
-      # plain old get
-      # FIXME: perf degredation
-      if @read_client.respond_to?(:get_from_last)
-        @read_client.get_from_last key, !raw
-      else
-        @read_client.get key, !raw
-      end
+      @read_client.get key, !raw
     rescue Memcached::NotFound
     end
 
@@ -100,7 +94,6 @@ module Kestrel
     rescue Memcached::NotStored
       false
     end
-
 
     # ==== Parameters
     # key<String>:: Queue name
@@ -122,7 +115,8 @@ module Kestrel
 
       val =
         begin
-          send select_get_method(key), key + commands, raw
+          shuffle_if_necessary! key
+          @read_client.get key + commands, !raw
         rescue *RECOVERABLE_ERRORS
           # we can't tell the difference between a server being down
           # and an empty queue, so just return nil. our sticky server
@@ -159,14 +153,14 @@ module Kestrel
       kestrel_opts
     end
 
-    def select_get_method(key)
+    def shuffle_if_necessary!(key)
       if key != @current_queue || @counter >= @gets_per_server
         @counter = 0
         @current_queue = key
-        :get_from_random
+        @read_client.quit
+        @read_client.set_servers(servers[rand(@server_count)])
       else
         @counter +=1
-        :get_from_last
       end
     end
 

@@ -32,12 +32,12 @@ describe Kestrel::Client do
       end
 
       it "returns nil if there is a recoverable exception" do
-        mock(@kestrel).select_get_method(@queue) { raise Memcached::SystemError }
+        mock(@kestrel).shuffle_if_necessary!(@queue) { raise Memcached::SystemError }
         @kestrel.get(@queue).should == nil
       end
 
       it "raises the exception if the exception is not recoverable" do
-        mock(@kestrel).select_get_method(@queue) { raise ArgumentError }
+        mock(@kestrel).shuffle_if_necessary!(@queue) { raise ArgumentError }
         lambda { @kestrel.get(@queue) }.should raise_error(ArgumentError)
       end
     end
