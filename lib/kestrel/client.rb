@@ -100,7 +100,7 @@ module Kestrel
     #                 style" second argument.
     #
     def get(key, opts = {})
-      raw = opts.delete(:raw) || false
+      raw = opts[:raw] || false
       commands = extract_queue_commands(opts)
 
       val =
