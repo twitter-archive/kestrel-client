@@ -116,7 +116,10 @@ module Kestrel
       val =
         begin
           shuffle_if_necessary! key
-          @read_client.get key + commands, !raw
+          # NOP rehashing for a single server on #get seems broken in
+          # libmemcached. Stick to get_from_last, for now.
+          # FIXME: When `rake benchmark` on #get matches #get_from_last, switch.
+          @read_client.get_from_last key + commands, !raw
         rescue *RECOVERABLE_ERRORS
           # we can't tell the difference between a server being down
           # and an empty queue, so just return nil. our sticky server
