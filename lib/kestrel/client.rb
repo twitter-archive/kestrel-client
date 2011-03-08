@@ -73,16 +73,6 @@ module Kestrel
       @write_client = Memcached.new(self.servers, opts)
     end
 
-    def get_from_random(key, raw=false)
-      @read_client.get key, !raw
-    rescue Memcached::NotFound
-    end
-
-    def get_from_last(key, raw=false)
-      @read_client.get key, !raw
-    rescue Memcached::NotFound
-    end
-
     def delete(key, expiry=0)
       with_retries { @write_client.delete key }
     rescue Memcached::NotFound, Memcached::ServerEnd
