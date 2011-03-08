@@ -1,5 +1,7 @@
+require 'forwardable'
+
 module Kestrel
-  class Client < Memcached
+  class Client
     require 'kestrel/client/stats_helper'
     require 'kestrel/client/retry_helper'
 
@@ -38,9 +40,13 @@ module Kestrel
       Memcached::WriteFailure
     ]
 
+    extend Forwardable
     include StatsHelper
     include RetryHelper
 
+    attr_accessor :servers, :options
+
+    def_delegators :@write_client, :add, :append, :cas, :decr, :incr, :get_orig, :prepend
 
     def initialize(*servers)
       opts = servers.last.is_a?(Hash) ? servers.pop : {}
@@ -57,53 +63,39 @@ module Kestrel
       opts[:exception_retry_limit] = 0
       opts[:distribution] = :random # force random distribution
 
-      super Array(servers).flatten.compact, opts
+      self.servers = Array(servers).flatten.compact
+      self.options = opts
+      @read_client = Memcached.new(self.servers, opts)
+      @write_client = Memcached.new(self.servers, opts)
     end
 
 
     attr_reader :current_queue, :kestrel_options
 
-
-    # Memcached overrides
-
-    %w(add append cas decr incr get_orig prepend).each do |m|
-      undef_method m
-    end
-
-    alias _super_get_from_random get
-    private :_super_get_from_random
-
     def get_from_random(key, raw=false)
-      _super_get_from_random key, !raw
+      @read_client.get key, !raw
     rescue Memcached::NotFound
     end
 
-    # use get_from_last if available, otherwise redefine to point to
-    # plain old get
-    if method_defined? :get_from_last
-
-      def get_from_last(key, raw=false)
-        super key, !raw
-      rescue Memcached::NotFound
+    def get_from_last(key, raw=false)
+      # use get_from_last if available, otherwise use
+      # plain old get
+      # FIXME: perf degredation
+      if @read_client.respond_to?(:get_from_last)
+        @read_client.get_from_last key, !raw
+      else
+        @read_client.get key, !raw
       end
-
-    else
-
-      $stderr.puts "You have an older version of memcached.gem. Please upgrade to 0.19.6 or later for sticky get behavior."
-      def get_from_last(key, raw=false)
-        _super_get_from_random key, !raw
-      rescue Memcached::NotFound
-      end
-
-    end # end ifdef :)
+    rescue Memcached::NotFound
+    end
 
     def delete(key, expiry=0)
-      with_retries { super key }
+      with_retries { @write_client.delete key }
     rescue Memcached::NotFound, Memcached::ServerEnd
     end
 
     def set(key, value, ttl=0, raw=false)
-      with_retries { super key, value, ttl, !raw }
+      with_retries { @write_client.set key, value, ttl, !raw }
       true
     rescue Memcached::NotStored
       false
@@ -130,7 +122,7 @@ module Kestrel
 
       val =
         begin
-          send(select_get_method(key), key + commands, raw)
+          send select_get_method(key), key + commands, raw
         rescue *RECOVERABLE_ERRORS
           # we can't tell the difference between a server being down
           # and an empty queue, so just return nil. our sticky server
