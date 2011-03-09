@@ -18,26 +18,30 @@ describe Kestrel::Client do
       end
 
       it "gets from the same server :gets_per_server times" do
-        mock(@kestrel).get_from_last("a_queue/t=10", false).times(100) { 'item' }
-        mock(@kestrel).get_from_random("a_queue/t=10", false).times(2) { 'item' }
+        client = @kestrel.instance_variable_get(:@read_client)
+        mock(client).get("a_queue/t=10", true).times(102).returns('item')
+        mock(client).quit.once
+        mock(client).set_servers.with(anything).once
 
         102.times { @kestrel.get("a_queue") }
       end
 
       it "gets from a different server when the last result was nil" do
-        mock(@kestrel).get_from_last("a_queue/t=10", false).never { nil }
-        mock(@kestrel).get_from_random("a_queue/t=10", false).times(3) { nil }
+        client = @kestrel.instance_variable_get(:@read_client)
+        mock(client).get("a_queue/t=10", true).returns(nil).twice
+        mock(client).quit.once
+        mock(client).set_servers.with(anything).once
 
-        3.times { @kestrel.get("a_queue") }
+        2.times { @kestrel.get("a_queue") }
       end
 
       it "returns nil if there is a recoverable exception" do
-        mock(@kestrel).select_get_method(@queue) { raise Memcached::SystemError }
+        mock(@kestrel).shuffle_if_necessary!(@queue) { raise Memcached::SystemError }
         @kestrel.get(@queue).should == nil
       end
 
       it "raises the exception if the exception is not recoverable" do
-        mock(@kestrel).select_get_method(@queue) { raise ArgumentError }
+        mock(@kestrel).shuffle_if_necessary!(@queue) { raise ArgumentError }
         lambda { @kestrel.get(@queue) }.should raise_error(ArgumentError)
       end
     end
