@@ -171,7 +171,7 @@ module Kestrel
 
     def with_retries #:nodoc:
       yield
-    rescue *Kestrel::Client::RECOVERABLE_ERRORS
+    rescue *RECOVERABLE_ERRORS
       tries ||= @exception_retry_limit + 1
       tries -= 1
       if tries > 0
