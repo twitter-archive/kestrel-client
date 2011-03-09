@@ -3,7 +3,6 @@ require 'forwardable'
 module Kestrel
   class Client
     require 'kestrel/client/stats_helper'
-    require 'kestrel/client/retry_helper'
 
     autoload :Proxy, 'kestrel/client/proxy'
     autoload :Envelope, 'kestrel/client/envelope'
@@ -43,7 +42,6 @@ module Kestrel
 
     extend Forwardable
     include StatsHelper
-    include RetryHelper
 
     attr_accessor :servers, :options
     attr_reader :current_queue, :kestrel_options, :current_server
@@ -70,7 +68,7 @@ module Kestrel
 
       @server_count = self.servers.size # Minor optimization.
       @read_client  = Memcached.new(self.servers[rand(@server_count)], opts)
-      @write_client = Memcached.new(self.servers, opts)
+      @write_client = Memcached.new(self.servers[rand(@server_count)], opts)
     end
 
     def delete(key, expiry=0)
@@ -170,5 +168,20 @@ module Kestrel
 
       commands.map { |c| "/#{c}" }.join('')
     end
+
+    def with_retries #:nodoc:
+      yield
+    rescue *Kestrel::Client::RECOVERABLE_ERRORS
+      tries ||= @exception_retry_limit + 1
+      tries -= 1
+      if tries > 0
+        retry
+      else
+        @write_client.quit
+        @write_client.set_servers(servers[rand(@server_count)])
+        raise
+      end
+    end
+
   end
 end
