@@ -57,6 +57,7 @@ module Kestrel
       @gets_per_server = kestrel_options[:gets_per_server]
       @exception_retry_limit = kestrel_options[:exception_retry_limit]
       @counter = 0
+      @shuffle = true
 
       # we handle our own retries so that we can apply different
       # policies to sets and gets, so set memcached limit to 0
@@ -81,6 +82,18 @@ module Kestrel
       true
     rescue Memcached::NotStored
       false
+    end
+
+    # This provides the necessary semantic to support transactionality
+    # in the Transactional client. It temporarily disables server
+    # shuffling to allow the client to close any open transactions on
+    # the current server before jumping.
+    #
+    def get_from_last(*args)
+      @shuffle = false
+      get *args
+    ensure
+      @shuffle = true
     end
 
     # ==== Parameters
@@ -144,7 +157,9 @@ module Kestrel
     def shuffle_if_necessary!(key)
       # Don't reset servers on the first request:
       # i.e. @counter == 0 && @current_queue == nil
-      if (@counter > 0 && key != @current_queue) || @counter >= @gets_per_server
+      if @shuffle &&
+          (@counter > 0 && key != @current_queue) ||
+          @counter >= @gets_per_server
         @counter = 0
         @current_queue = key
         @read_client.quit
