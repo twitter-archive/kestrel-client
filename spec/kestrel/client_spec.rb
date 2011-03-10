@@ -20,8 +20,7 @@ describe Kestrel::Client do
       it "gets from the same server :gets_per_server times" do
         client = @kestrel.instance_variable_get(:@read_client)
         mock(client).get("a_queue/t=10", true).times(102).returns('item')
-        mock(client).quit.once
-        mock(client).set_servers.with(anything).once
+        mock(client).reset.with(anything).once
 
         102.times { @kestrel.get("a_queue") }
       end
@@ -29,8 +28,7 @@ describe Kestrel::Client do
       it "gets from a different server when the last result was nil" do
         client = @kestrel.instance_variable_get(:@read_client)
         mock(client).get("a_queue/t=10", true).returns(nil).twice
-        mock(client).quit.once
-        mock(client).set_servers.with(anything).once
+        mock(client).reset.with(anything).once
 
         2.times { @kestrel.get("a_queue") }
       end
