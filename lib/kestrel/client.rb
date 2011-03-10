@@ -162,8 +162,7 @@ module Kestrel
           @counter >= @gets_per_server
         @counter = 0
         @current_queue = key
-        @read_client.quit
-        @read_client.set_servers(servers[rand(@server_count)])
+        @read_client.reset(servers[rand(@server_count)])
       else
         @counter +=1
       end
@@ -186,11 +185,11 @@ module Kestrel
     rescue *RECOVERABLE_ERRORS
       tries ||= @exception_retry_limit + 1
       tries -= 1
+      @write_client.reset(servers[rand(@server_count)])
+
       if tries > 0
         retry
       else
-        @write_client.quit
-        @write_client.set_servers(servers[rand(@server_count)])
         raise
       end
     end
