@@ -12,13 +12,17 @@ module Kestrel
     autoload :Json, 'kestrel/client/json'
     autoload :Transactional, "kestrel/client/transactional"
 
-    KESTREL_OPTIONS = [:gets_per_server, :exception_retry_limit, :get_timeout_ms].freeze
+    KESTREL_OPTIONS = [:gets_per_server,
+                       :time_per_server,
+                       :exception_retry_limit,
+                       :get_timeout_ms].freeze
 
     DEFAULT_OPTIONS = {
       :retry_timeout => 0,
       :exception_retry_limit => 5,
       :timeout => 0.25,
       :gets_per_server => 100,
+      :time_per_server => 60, # seconds
       :get_timeout_ms => 10
     }.freeze
 
@@ -49,8 +53,13 @@ module Kestrel
       @kestrel_options = extract_kestrel_options!(opts)
       @default_get_timeout = kestrel_options[:get_timeout_ms]
       @gets_per_server = kestrel_options[:gets_per_server]
+      @time_per_server = kestrel_options[:time_per_server]
       @exception_retry_limit = kestrel_options[:exception_retry_limit]
+
+      # Shuffling state
       @counter = 0
+      @start_time = Time.now
+      @shuffle = true
 
       # we handle our own retries so that we can apply different
       # policies to sets and gets, so set memcached limit to 0
@@ -168,8 +177,11 @@ module Kestrel
     end
 
     def select_get_method(key)
-      if key != @current_queue || @counter >= @gets_per_server
+      if key != @current_queue ||
+          @counter >= @gets_per_server ||
+          (Time.now > @start_time + @time_per_server)
         @counter = 0
+        @start_time = Time.now
         @current_queue = key
         :get_from_random
       else
