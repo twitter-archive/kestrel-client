@@ -126,10 +126,18 @@ describe "Kestrel::Client::Transactional" do
         stub(@raw_kestrel_client).get(@queue, anything) { :mcguffin }
         @kestrel.get(@queue)
 
+        mock(@raw_kestrel_client).get_from_last(@queue + "/close") { raise Memcached::ServerIsMarkedDead }
+        lambda { @kestrel.get(@queue) }.should_not raise_error(Memcached::ServerIsMarkedDead)
+      end
+
+      it "ignores Memcached exceptions during transaction close" do
+        stub(@raw_kestrel_client).get(@queue, anything) { :mcguffin }
+        @kestrel.get(@queue)
+
         mock(@raw_kestrel_client).get_from_last(@queue + "/close")
         @kestrel.get(@queue)
       end
-
+      
       it "closes an open transaction with retries" do
         stub(@kestrel).rand { 0 }
         stub(@raw_kestrel_client).get(@queue + "_errors", anything) do
