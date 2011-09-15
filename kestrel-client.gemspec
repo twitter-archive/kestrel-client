@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{kestrel-client}
-  s.version = "0.7.0"
+  s.name = "kestrel-client"
+  s.version = "0.6.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Matt Freels", "Rael Dornfest"]
-  s.date = %q{2011-03-09}
-  s.description = %q{Ruby client for the Kestrel queue server}
-  s.email = %q{rael@twitter.com}
+  s.date = "2011-09-15"
+  s.description = "Ruby client for the Kestrel queue server"
+  s.email = "rael@twitter.com"
   s.extra_rdoc_files = [
     "README.md"
   ]
@@ -47,10 +47,10 @@ Gem::Specification.new do |s|
     "spec/spec.opts",
     "spec/spec_helper.rb"
   ]
-  s.homepage = %q{http://github.com/freels/kestrel-client}
+  s.homepage = "http://github.com/freels/kestrel-client"
   s.require_paths = ["lib"]
-  s.rubygems_version = %q{1.4.1}
-  s.summary = %q{Ruby Kestrel client}
+  s.rubygems_version = "1.8.10"
+  s.summary = "Ruby Kestrel client"
   s.test_files = [
     "spec/kestrel/client/blocking_spec.rb",
     "spec/kestrel/client/envelope_spec.rb",
