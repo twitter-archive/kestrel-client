@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "kestrel-client"
-  s.version = "0.6.4"
+  s.version = "0.6.5"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Matt Freels", "Rael Dornfest"]
-  s.date = "2011-09-15"
+  s.date = "2011-09-16"
   s.description = "Ruby client for the Kestrel queue server"
   s.email = "rael@twitter.com"
   s.extra_rdoc_files = [
