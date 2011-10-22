@@ -125,8 +125,11 @@ module Kestrel
           nil
         end
 
-      # nil result, force next get to jump from current server
-      @counter = @gets_per_server unless val
+      # nil result without :close and :abort, force next get to jump from
+      # current server
+      if !val && !opts[:close] && !opts[:abort]
+        @counter = @gets_per_server
+      end
 
       val
     end
