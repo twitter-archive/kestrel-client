@@ -75,7 +75,7 @@ class Kestrel::Client::Transactional < Kestrel::Client::Proxy
   def close_last_transaction #:nodoc:
     return unless @last_read_queue
 
-    client.get_from_last(@last_read_queue + "/close")
+    client.get_from_last(@last_read_queue, :close => true)
     @last_read_queue = @current_queue = @job = nil
   end
 

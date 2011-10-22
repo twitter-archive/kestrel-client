@@ -19,7 +19,7 @@ describe "Kestrel::Client::Transactional" do
       stub(@raw_kestrel_client).get(@queue, anything) { returns.shift }
       stub(@raw_kestrel_client).get(@queue + "_errors", anything)
 
-      mock(@raw_kestrel_client).get_from_last(@queue + "/close")
+      mock(@raw_kestrel_client).get_from_last(@queue, :close => true)
 
       get_job.should == :mcguffin
       @kestrel.current_try.should == 1
@@ -31,7 +31,7 @@ describe "Kestrel::Client::Transactional" do
       stub(@raw_kestrel_client).get(@queue + "_errors", anything) { returns.shift }
       stub(@raw_kestrel_client).get(@queue, anything)
 
-      mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close")
+      mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true)
 
       get_job.should == :mcguffin
       @kestrel.current_try.should == 2
@@ -47,7 +47,7 @@ describe "Kestrel::Client::Transactional" do
         j.retries.should == 1
         j.job.should == :mcguffin
       end
-      mock(@raw_kestrel_client).get_from_last(@queue + "/close")
+      mock(@raw_kestrel_client).get_from_last(@queue, :close => true)
 
       get_job.should == :mcguffin
       @kestrel.current_try.should == 1
@@ -64,7 +64,7 @@ describe "Kestrel::Client::Transactional" do
         j.retries.should == 2
         j.job.should == :mcguffin
       end
-      mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close")
+      mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true)
 
       get_job.should == :mcguffin
       @kestrel.current_try.should == 2
@@ -78,7 +78,7 @@ describe "Kestrel::Client::Transactional" do
       stub(@raw_kestrel_client).get(@queue + "_errors", anything) { returns.shift }
       stub(@raw_kestrel_client).get(@queue, anything)
       mock(@raw_kestrel_client).set.never
-      mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close")
+      mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true)
 
       get_job.should == :mcguffin
       @kestrel.current_try.should == Kestrel::Client::Transactional::DEFAULT_RETRIES
@@ -126,7 +126,7 @@ describe "Kestrel::Client::Transactional" do
         stub(@raw_kestrel_client).get(@queue, anything) { :mcguffin }
         @kestrel.get(@queue)
 
-        mock(@raw_kestrel_client).get_from_last(@queue + "/close")
+        mock(@raw_kestrel_client).get_from_last(@queue, :close => true)
         @kestrel.get(@queue)
       end
 
@@ -137,7 +137,7 @@ describe "Kestrel::Client::Transactional" do
         end
         @kestrel.get(@queue)
 
-        mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close")
+        mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true)
         @kestrel.get(@queue)
       end
 
@@ -205,7 +205,7 @@ describe "Kestrel::Client::Transactional" do
           Kestrel::Client::Transactional::RetryableJob.new(Kestrel::Client::Transactional::DEFAULT_RETRIES - 1, :mcmuffin)
         end
         mock(@raw_kestrel_client).set(@queue + "_errors", anything).never
-        mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close")
+        mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true)
         @kestrel.get(@queue)
         lambda { @kestrel.retry }.should raise_error(Kestrel::Client::Transactional::RetriesExceeded)
       end
@@ -214,7 +214,7 @@ describe "Kestrel::Client::Transactional" do
         stub(@raw_kestrel_client).get(@queue, anything) { :mcguffin }
         @kestrel.get(@queue)
 
-        mock(@raw_kestrel_client).get_from_last(@queue + "/close")
+        mock(@raw_kestrel_client).get_from_last(@queue, :close => true)
         @kestrel.retry
       end
 
@@ -225,7 +225,7 @@ describe "Kestrel::Client::Transactional" do
         end
         @kestrel.get(@queue)
 
-        mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close")
+        mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true)
         @kestrel.retry
       end
     end
@@ -244,16 +244,16 @@ describe "Kestrel::Client::Transactional" do
 
     describe "#close_last_transaction" do
       it "does nothing if there is no last transaction" do
-        mock(@raw_kestrel_client).get_from_last(@queue + "/close").never
-        mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close").never
+        mock(@raw_kestrel_client).get_from_last(@queue, :close => true).never
+        mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true).never
         @kestrel.send(:close_last_transaction)
       end
 
       it "closes the normal queue if the job was pulled off of the normal queue" do
         mock(@kestrel).read_from_error_queue? { false }
         mock(@raw_kestrel_client).get(@queue, :open => true) { :mcguffin }
-        mock(@raw_kestrel_client).get_from_last(@queue + "/close")
-        mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close").never
+        mock(@raw_kestrel_client).get_from_last(@queue, :close => true)
+        mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true).never
 
         @kestrel.get(@queue).should == :mcguffin
         @kestrel.send(:close_last_transaction)
@@ -262,8 +262,8 @@ describe "Kestrel::Client::Transactional" do
       it "closes the error queue if the job was pulled off of the error queue" do
         mock(@kestrel).read_from_error_queue? { true }
         mock(@raw_kestrel_client).get(@queue + "_errors", anything) { Kestrel::Client::Transactional::RetryableJob.new 1, :mcguffin }
-        mock(@raw_kestrel_client).get_from_last(@queue + "/close").never
-        mock(@raw_kestrel_client).get_from_last(@queue + "_errors/close")
+        mock(@raw_kestrel_client).get_from_last(@queue, :close => true).never
+        mock(@raw_kestrel_client).get_from_last(@queue + "_errors", :close => true)
 
         @kestrel.get(@queue).should == :mcguffin
         @kestrel.send(:close_last_transaction)
