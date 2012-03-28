@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'spec'
+require 'rspec'
 
 spec_dir = File.dirname(__FILE__)
 
@@ -10,7 +10,7 @@ require 'kestrel'
 
 TEST_CONFIG_FILE = File.expand_path("#{spec_dir}/kestrel/config/kestrel.yml")
 
-Spec::Runner.configure do |config|
+RSpec.configure do |config|
   config.mock_with :rr
 
   config.before do
