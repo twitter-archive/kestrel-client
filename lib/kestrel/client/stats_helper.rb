@@ -1,6 +1,6 @@
 module Kestrel::Client::StatsHelper
-
-  QUEUE_STAT_NAMES = %w{items bytes total_items logsize expired_items mem_items mem_bytes age discarded}
+  STATS_TIMEOUT    = 3
+  QUEUE_STAT_NAMES = %w{items bytes total_items logsize expired_items mem_items mem_bytes age discarded waiters open_transactions}
 
   def sizeof(queue)
     stat_info = stat(queue)
@@ -12,7 +12,23 @@ module Kestrel::Client::StatsHelper
   end
 
   def stats
-    merge_stats(servers.map { |server| stats_for_server(server) })
+    alive, dead = 0, 0
+
+    results = servers.map do |server|
+      begin
+        result = stats_for_server(server)
+        alive += 1
+        result
+      rescue Exception
+        dead += 1
+        nil
+      end
+    end.compact
+
+    stats = merge_stats(results)
+    stats['alive_servers'] = alive
+    stats['dead_servers']  = dead
+    stats
   end
 
   def stat(queue)
@@ -23,7 +39,10 @@ module Kestrel::Client::StatsHelper
 
   def stats_for_server(server)
     server_name, port = server.split(/:/)
-    socket = TCPSocket.new(server_name, port)
+    socket = nil
+    with_timeout STATS_TIMEOUT do
+      socket = TCPSocket.new(server_name, port)
+    end
     socket.puts "STATS"
 
     stats = Hash.new
@@ -45,6 +64,8 @@ module Kestrel::Client::StatsHelper
     end
 
     stats
+  ensure
+    socket.close if socket && !socket.closed?
   end
 
   def merge_stats(all_stats)
@@ -75,6 +96,27 @@ module Kestrel::Client::StatsHelper
         value.to_i
     else
       value
+    end
+  end
+
+  begin
+    require "system_timer"
+
+    def with_timeout(seconds, &block)
+      SystemTimer.timeout_after(seconds, &block)
+    end
+
+  rescue LoadError
+    if ! defined?(RUBY_ENGINE)
+      # MRI 1.8, all other interpreters define RUBY_ENGINE, JRuby and
+      # Rubinius should have no issues with timeout.
+      warn "WARNING: using the built-in Timeout class which is known to have issues when used for opening connections. Install the SystemTimer gem if you want to make sure the Kestrel client will not hang."
+    end
+
+    require "timeout"
+
+    def with_timeout(seconds, &block)
+      Timeout.timeout(seconds, &block)
     end
   end
 end
