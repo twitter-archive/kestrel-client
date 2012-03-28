@@ -58,9 +58,15 @@ class Kestrel::Client::Transactional < Kestrel::Client::Proxy
 
     close_last_transaction
 
-    queue = read_from_error_queue? ? key + "_errors" : key
+    if read_from_error_queue?
+      queue = key + "_errors"
+      job = client.get_from_last(queue, opts.merge(:open => true))
+    else
+      queue = key
+      job = client.get(queue, opts.merge(:open => true))
+    end
 
-    if job = client.get(queue, opts.merge(:open => true))
+    if job
       @job = job.is_a?(RetryableJob) ? job : RetryableJob.new(0, job)
       @last_read_queue = queue
       @current_queue = key
@@ -75,7 +81,7 @@ class Kestrel::Client::Transactional < Kestrel::Client::Proxy
   def close_last_transaction #:nodoc:
     return unless @last_read_queue
 
-    client.get_from_last(@last_read_queue + "/close")
+    client.get_from_last(@last_read_queue, :close => true)
     @last_read_queue = @current_queue = @job = nil
   end
 
