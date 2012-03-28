@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{kestrel-client}
-  s.version = "0.7.1"
+  s.name = "kestrel-client"
+  s.version = "0.7.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Matt Freels", "Rael Dornfest"]
-  s.date = %q{2011-03-10}
-  s.description = %q{Ruby client for the Kestrel queue server}
-  s.email = %q{rael@twitter.com}
+  s.date = "2012-03-28"
+  s.description = "Ruby client for the Kestrel queue server"
+  s.email = "rael@twitter.com"
   s.extra_rdoc_files = [
     "README.md"
   ]
@@ -47,23 +47,10 @@ Gem::Specification.new do |s|
     "spec/spec.opts",
     "spec/spec_helper.rb"
   ]
-  s.homepage = %q{http://github.com/freels/kestrel-client}
+  s.homepage = "http://github.com/freels/kestrel-client"
   s.require_paths = ["lib"]
-  s.rubygems_version = %q{1.4.1}
-  s.summary = %q{Ruby Kestrel client}
-  s.test_files = [
-    "spec/kestrel/client/blocking_spec.rb",
-    "spec/kestrel/client/envelope_spec.rb",
-    "spec/kestrel/client/json_spec.rb",
-    "spec/kestrel/client/namespace_spec.rb",
-    "spec/kestrel/client/partitioning_spec.rb",
-    "spec/kestrel/client/transactional_spec.rb",
-    "spec/kestrel/client/unmarshal_spec.rb",
-    "spec/kestrel/client_spec.rb",
-    "spec/kestrel/config_spec.rb",
-    "spec/kestrel_benchmark.rb",
-    "spec/spec_helper.rb"
-  ]
+  s.rubygems_version = "1.8.15"
+  s.summary = "Ruby Kestrel client"
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
