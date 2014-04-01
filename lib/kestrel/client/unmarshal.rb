@@ -6,12 +6,12 @@ module Kestrel
         return response if opts[:raw]
 
         if is_marshaled?(response)
-          Marshal.load_with_constantize(response, loaded_constants = [])
+          Marshal.load(response)
         else
           response
         end
       end
-      
+
       if RUBY_VERSION.respond_to?(:getbyte)
         def is_marshaled?(object)
           o = object.to_s
